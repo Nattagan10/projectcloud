@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Inventory Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Kanit', sans-serif; background-color: #f1f5f9; }
+        .modal { transition: opacity 0.25s ease; }
+        body.modal-active { overflow: hidden; }
+    </style>
+</head>
+<body class="bg-gray-100 text-slate-800">
+
+    <!-- Header -->
+    <nav class="bg-slate-900 text-white shadow-xl p-4 sticky top-0 z-40">
+        <div class="container mx-auto flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <div class="bg-blue-600 p-2 rounded-lg"><i class="fa-solid fa-boxes-stacked text-xl text-white"></i></div>
+                <h1 class="text-xl font-bold tracking-tight">Inventory Management Dashboard</h1>
+            </div>
+            <button onclick="openAddModal()" class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl font-bold transition-all flex items-center shadow-lg active:scale-95">
+                <i class="fa-solid fa-plus mr-2"></i> เพิ่มสินค้าใหม่
+            </button>
+        </div>
+    </nav>
+
+    <div class="container mx-auto p-4 md:p-8">
+        <!-- Dashboard Stats -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+            <div class="bg-white p-6 rounded-3xl shadow-sm border-l-8 border-blue-500 flex justify-between items-center">
+                <div>
+                    <p class="text-slate-400 text-sm font-semibold uppercase">สินค้าทั้งหมด</p>
+                    <h2 id="stat-total" class="text-4xl font-black text-slate-800">0</h2>
+                </div>
+                <i class="fa-solid fa-layer-group text-4xl text-blue-100"></i>
+            </div>
+            <div class="bg-white p-6 rounded-3xl shadow-sm border-l-8 border-orange-500 flex justify-between items-center">
+                <div>
+                    <p class="text-slate-400 text-sm font-semibold uppercase">สต็อกต่ำ (<= 20)</p>
+                    <h2 id="stat-warning" class="text-4xl font-black text-orange-600">0</h2>
+                </div>
+                <i class="fa-solid fa-triangle-exclamation text-4xl text-orange-100"></i>
+            </div>
+            <div class="bg-white p-6 rounded-3xl shadow-sm border-l-8 border-red-500 flex justify-between items-center">
+                <div>
+                    <p class="text-slate-400 text-sm font-semibold uppercase">หมดอายุแล้ว</p>
+                    <h2 id="stat-expired" class="text-4xl font-black text-red-600">0</h2>
+                </div>
+                <i class="fa-solid fa-calendar-xmark text-4xl text-red-100"></i>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            <!-- Table Section -->
+            <div class="lg:col-span-3 bg-white rounded-3xl shadow-sm overflow-hidden border border-slate-100">
+                <div class="p-6 border-b flex justify-between items-center bg-slate-50/50">
+                    <h3 class="font-bold text-slate-700 flex items-center"><i class="fa-solid fa-list mr-2 text-blue-500"></i> รายการสินค้าคงคลัง</h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead>
+                            <tr class="text-slate-400 text-xs uppercase tracking-widest border-b bg-slate-50">
+                                <th class="p-5 font-bold">ชื่อสินค้า</th>
+                                <th class="p-5 font-bold text-center">คงเหลือ</th>
+                                <th class="p-5 font-bold text-center">วันคงเหลือ</th>
+                                <th class="p-5 font-bold text-center">สถานะ</th>
+                                <th class="p-5 font-bold text-center">จัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="data-table" class="divide-y divide-slate-100 text-sm font-medium text-slate-700"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Alerts Panel -->
+            <div class="bg-white rounded-3xl shadow-sm border border-slate-100 h-fit sticky top-24">
+                <div class="p-6 border-b bg-slate-50/50 font-bold text-slate-700 flex items-center">
+                    <i class="fa-solid fa-bell mr-2 text-orange-500"></i> แจ้งเตือนด่วน
+                </div>
+                <div id="alert-panel" class="p-6 space-y-4 max-h-[600px] overflow-y-auto"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal (Unified for Add and Edit) -->
+    <div id="modal" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-[60]">
+        <div class="modal-overlay absolute w-full h-full bg-slate-900/60 backdrop-blur-sm" onclick="toggleModal()"></div>
+        <div class="modal-container bg-white w-11/12 md:max-w-md mx-auto rounded-[2rem] shadow-2xl z-50 overflow-hidden transform scale-95 transition-transform duration-300">
+            <div class="modal-content py-8 px-10">
+                <div class="flex justify-between items-center pb-6 border-b border-slate-100">
+                    <p id="modal-title" class="text-2xl font-black text-slate-800 tracking-tight">เพิ่มสินค้าใหม่</p>
+                    <div onclick="toggleModal()" class="cursor-pointer text-slate-300 hover:text-slate-500 transition text-2xl"><i class="fa-solid fa-circle-xmark"></i></div>
+                </div>
+                
+                <form id="item-form" class="space-y-5 mt-8">
+                    <input type="hidden" id="itemId">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">ชื่อสินค้า</label>
+                        <input type="text" id="itemName" required class="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition font-semibold">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">หมวดหมู่</label>
+                        <select id="category" class="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none bg-white font-semibold">
+                            <option value="Dairy">Dairy (ผลิตภัณฑ์นม)</option>
+                            <option value="Snacks">Snacks (ขนม)</option>
+                            <option value="Produce">Produce (ผัก/ผลไม้)</option>
+                            <option value="Meat">Meat (เนื้อสัตว์)</option>
+                            <option value="Bakery">Bakery (เบเกอรี่)</option>
+                        </select>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">จำนวน</label>
+                            <input type="number" id="stockQty" required class="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none font-semibold">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">วันหมดอายุ</label>
+                            <input type="date" id="expiryDate" required class="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none font-semibold">
+                        </div>
+                    </div>
+                    <button type="submit" id="btn-save" class="w-full bg-blue-600 text-white font-black py-4 rounded-2xl hover:bg-blue-700 transition shadow-xl mt-6 flex items-center justify-center tracking-wide">
+                        <i class="fa-solid fa-save mr-2"></i> บันทึกข้อมูลสินค้า
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = '[https://projectcloud-k98v.onrender.com/api/items](https://projectcloud-k98v.onrender.com/api/items)';
+
+        let currentItems = [];
+
+        async function fetchItems() {
+            try {
+                const res = await fetch(API_URL);
+                currentItems = await res.json();
+                renderUI();
+            } catch (err) { console.error('Connection failed:', err); }
+        }
+
+        function renderUI() {
+            const tableBody = document.getElementById('data-table');
+            const alertPanel = document.getElementById('alert-panel');
+            let tableHTML = '', alertHTML = '', cWarning = 0, cExpired = 0;
+
+            currentItems.forEach(item => {
+                const days = item.DaysUntilExpiry;
+                const stock = item.StockQty;
+                let badge = '<span class="bg-green-100 text-green-600 px-3 py-1 rounded-full text-[10px] font-bold">ปกติ</span>';
+                
+                // Logic แจ้งเตือน: 1. หมดอายุ 2. สต็อกต่ำ (<=20) 3. ใกล้หมดอายุ
+                if (days < 0) {
+                    badge = '<span class="bg-red-100 text-red-600 px-3 py-1 rounded-full text-[10px] font-bold">หมดอายุ</span>';
+                    cExpired++;
+                    alertHTML += createAlertItem(item.ItemName, `สินค้าหมดอายุแล้ว!`, 'red');
+                } else if (stock <= 20) {
+                    badge = '<span class="bg-orange-100 text-orange-600 px-3 py-1 rounded-full text-[10px] font-bold">สต็อกต่ำ</span>';
+                    cWarning++;
+                    alertHTML += createAlertItem(item.ItemName, `สต็อกเหลือเพียง ${stock} ชิ้น`, 'orange');
+                } else if (days <= 7) {
+                    badge = '<span class="bg-yellow-100 text-yellow-600 px-3 py-1 rounded-full text-[10px] font-bold">ใกล้หมด</span>';
+                    cWarning++;
+                    alertHTML += createAlertItem(item.ItemName, `หมดอายุในอีก ${days} วัน`, 'yellow');
+                }
+
+                tableHTML += `<tr class="hover:bg-slate-50 transition-colors">
+                    <td class="p-5">
+                        <div class="font-bold text-slate-700">${item.ItemName}</div>
+                        <div class="text-[10px] text-slate-400 uppercase font-bold tracking-widest">${item.Category}</div>
+                    </td>
+                    <td class="p-5 text-center font-black text-slate-600">${stock}</td>
+                    <td class="p-5 text-center font-black ${days < 0 ? 'text-red-500' : 'text-slate-600'}">${days}</td>
+                    <td class="p-5 text-center">${badge}</td>
+                    <td class="p-5 text-center">
+                        <div class="flex justify-center space-x-2">
+                            <button onclick="openEditModal('${item._id}')" class="w-8 h-8 flex items-center justify-center rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white transition shadow-sm"><i class="fa-solid fa-pen-to-square"></i></button>
+                            <button onclick="deleteItem('${item._id}')" class="w-8 h-8 flex items-center justify-center rounded-lg bg-red-50 text-red-400 hover:bg-red-500 hover:text-white transition shadow-sm"><i class="fa-solid fa-trash-can"></i></button>
+                        </div>
+                    </td>
+                </tr>`;
+            });
+
+            tableBody.innerHTML = tableHTML || '<tr><td colspan="5" class="p-10 text-center text-slate-300 italic font-bold">ไม่มีข้อมูลในคลังสินค้า</td></tr>';
+            alertPanel.innerHTML = alertHTML || '<div class="text-center text-slate-300 text-xs py-10 font-bold">ไม่มีรายการแจ้งเตือนด่วน</div>';
+            document.getElementById('stat-total').innerText = currentItems.length;
+            document.getElementById('stat-warning').innerText = cWarning;
+            document.getElementById('stat-expired').innerText = cExpired;
+        }
+
+        function createAlertItem(name, msg, color) {
+            const styles = {
+                red: 'bg-red-50 border-red-200 text-red-700',
+                orange: 'bg-orange-50 border-orange-200 text-orange-700',
+                yellow: 'bg-yellow-50 border-yellow-200 text-yellow-700'
+            };
+            return `<div class="p-4 rounded-2xl border ${styles[color]} shadow-sm animate-pulse">
+                <div class="text-[10px] font-black uppercase tracking-tighter mb-1 opacity-60">${color === 'red' ? '⚠️ CRITICAL' : '🔔 ALERT'}</div>
+                <div class="text-sm font-bold">${name}</div>
+                <div class="text-xs font-semibold">${msg}</div>
+            </div>`;
+        }
+
+        function openAddModal() {
+            document.getElementById('modal-title').innerText = 'เพิ่มสินค้าใหม่';
+            document.getElementById('item-form').reset();
+            document.getElementById('itemId').value = '';
+            toggleModal();
+        }
+
+        function openEditModal(id) {
+            const item = currentItems.find(i => i._id === id);
+            if (!item) return;
+            document.getElementById('modal-title').innerText = 'แก้ไขข้อมูลสินค้า';
+            document.getElementById('itemId').value = item._id;
+            document.getElementById('itemName').value = item.ItemName;
+            document.getElementById('category').value = item.Category;
+            document.getElementById('stockQty').value = item.StockQty;
+            document.getElementById('expiryDate').value = item.ExpiryDate.split('T')[0];
+            toggleModal();
+        }
+
+        document.getElementById('item-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('itemId').value;
+            const data = {
+                ItemName: document.getElementById('itemName').value,
+                Category: document.getElementById('category').value,
+                StockQty: document.getElementById('stockQty').value,
+                ExpiryDate: document.getElementById('expiryDate').value
+            };
+
+            try {
+                const method = id ? 'PUT' : 'POST';
+                const url = id ? `${API_URL}/${id}` : API_URL;
+                const res = await fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                if (res.ok) { toggleModal(); fetchItems(); }
+            } catch (err) { alert('บันทึกไม่สำเร็จ!'); }
+        });
+
+        async function deleteItem(id) {
+            if (!confirm('ยืนยันการลบข้อมูลนี้ออกจากระบบ?')) return;
+            try {
+                await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+                fetchItems();
+            } catch (err) { console.error(err); }
+        }
+
+        function toggleModal() {
+            const modal = document.getElementById('modal');
+            const container = modal.querySelector('.modal-container');
+            modal.classList.toggle('opacity-0');
+            modal.classList.toggle('pointer-events-none');
+            document.body.classList.toggle('modal-active');
+            container.classList.toggle('scale-95');
+            container.classList.toggle('scale-100');
+        }
+
+        window.onload = fetchItems;
+    </script>
+</body>
+</html>
